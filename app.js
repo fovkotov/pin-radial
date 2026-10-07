@@ -3184,8 +3184,9 @@ function exportSvg() {
 /**
  * Build a clean standalone SVG (no UI chrome).
  * Arc labels are glyph outlines (<path>), not <text>/<textPath> — paste-ready in Figma/AI.
+ * @param {{ includeBackground?: boolean }} [opts]
  */
-function buildExportSvg(src, font) {
+function buildExportSvg(src, font, { includeBackground = true } = {}) {
   const ns = "http://www.w3.org/2000/svg";
   const root = document.createElementNS(ns, "svg");
   root.setAttribute("xmlns", ns);
@@ -3193,13 +3194,15 @@ function buildExportSvg(src, font) {
   root.setAttribute("width", "800");
   root.setAttribute("height", "800");
 
-  const bgFill =
-    document.getElementById("bg")?.getAttribute("fill") || "#dbdfe7";
-  const rect = document.createElementNS(ns, "rect");
-  rect.setAttribute("width", "800");
-  rect.setAttribute("height", "800");
-  rect.setAttribute("fill", bgFill);
-  root.appendChild(rect);
+  if (includeBackground) {
+    const bgFill =
+      document.getElementById("bg")?.getAttribute("fill") || "#dbdfe7";
+    const rect = document.createElementNS(ns, "rect");
+    rect.setAttribute("width", "800");
+    rect.setAttribute("height", "800");
+    rect.setAttribute("fill", bgFill);
+    root.appendChild(rect);
+  }
 
   const texts = [];
   const segments = Array.isArray(src?.segments) ? src.segments : [];
@@ -3222,14 +3225,19 @@ function buildExportSvg(src, font) {
   return root;
 }
 
-function exportSvgSync() {
-  const src = viewMode === "anim" && animSnapshot ? animSnapshot : state;
-  const root = buildExportSvg(src, arcOpentypeFont);
-
+/** Serialize export SVG string (same as D-key download payload). */
+function serializeExportSvg(src, { includeBackground = true } = {}) {
+  const root = buildExportSvg(src, arcOpentypeFont, { includeBackground });
   let source = new XMLSerializer().serializeToString(root);
   if (!source.includes('xmlns="http://www.w3.org/2000/svg"')) {
     source = source.replace("<svg", '<svg xmlns="http://www.w3.org/2000/svg"');
   }
+  return source;
+}
+
+function exportSvgSync() {
+  const src = viewMode === "anim" && animSnapshot ? animSnapshot : state;
+  const source = serializeExportSvg(src, { includeBackground: true });
 
   const blob = new Blob([source], { type: "image/svg+xml;charset=utf-8" });
   const url = URL.createObjectURL(blob);
@@ -3241,6 +3249,37 @@ function exportSvgSync() {
 
   if (viewMode === "volume") {
     exportView3dPng("pin-radial-3d.png");
+  }
+}
+
+/**
+ * Copy flat composition SVG to clipboard without page background (transparent).
+ * Reuses D-key export geometry; does not mutate state.
+ * @returns {Promise<boolean>}
+ */
+async function copyFlatSvgTransparent() {
+  try {
+    await ensureArcOpentypeFont().catch((err) => {
+      console.warn("opentype font load failed", err);
+      return null;
+    });
+    const source = serializeExportSvg(state, { includeBackground: false });
+    if (!navigator.clipboard?.write || typeof ClipboardItem === "undefined") {
+      console.error("Clipboard SVG write not supported");
+      return false;
+    }
+    const svgBlob = new Blob([source], { type: "image/svg+xml" });
+    const plainBlob = new Blob([source], { type: "text/plain" });
+    await navigator.clipboard.write([
+      new ClipboardItem({
+        "image/svg+xml": svgBlob,
+        "text/plain": plainBlob,
+      }),
+    ]);
+    return true;
+  } catch (err) {
+    console.error("Copy flat SVG failed", err);
+    return false;
   }
 }
 
@@ -4240,17 +4279,25 @@ window.addEventListener("keydown", (evt) => {
       exportSvg();
       return;
     }
-    if (
-      viewMode === "volume" &&
-      (evt.code === "KeyC" || evt.key === "c" || evt.key === "C")
-    ) {
-      evt.preventDefault();
-      copyView3dTransparentPng().then((ok) => {
-        if (!ok) {
-          alert("Не удалось скопировать картинку без фона (нужен доступ к буферу).");
-        }
-      });
-      return;
+    if (evt.code === "KeyC" || evt.key === "c" || evt.key === "C") {
+      if (viewMode === "volume") {
+        evt.preventDefault();
+        copyView3dTransparentPng().then((ok) => {
+          if (!ok) {
+            alert("Не удалось скопировать картинку без фона (нужен доступ к буферу).");
+          }
+        });
+        return;
+      }
+      if (viewMode === "flat") {
+        evt.preventDefault();
+        copyFlatSvgTransparent().then((ok) => {
+          if (!ok) {
+            alert("Не удалось скопировать SVG без фона (нужен доступ к буферу).");
+          }
+        });
+        return;
+      }
     }
   }
 
