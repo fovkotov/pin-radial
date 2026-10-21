@@ -288,6 +288,7 @@ function ensureScene(container) {
   controls.minDistance = 2;
   controls.maxDistance = 14;
   controls.target.set(0, 0, 0);
+  controls.addEventListener("change", publishCameraPose);
 
   // No lights — MeshBasicMaterial only
   root = new THREE.Group();
@@ -358,11 +359,127 @@ export function syncView3d(state) {
   // Arc texts intentionally omitted from volume view.
 }
 
+let posePublishRaf = 0;
+function publishCameraPose(immediate = false) {
+  const fire = () => {
+    posePublishRaf = 0;
+    const pose = getView3dCameraPose();
+    if (!pose) return;
+    window.dispatchEvent(new CustomEvent("radial-camera-sync", { detail: pose }));
+  };
+  if (immediate) {
+    if (posePublishRaf) cancelAnimationFrame(posePublishRaf);
+    fire();
+    return;
+  }
+  if (posePublishRaf) return;
+  posePublishRaf = requestAnimationFrame(fire);
+}
+
+/** Orbit camera pose in degrees: azimuth (yaw), elevation from horizon, distance to target. */
+export function getView3dCameraPose() {
+  if (!camera || !controls) return null;
+  const azimuth = (controls.getAzimuthalAngle() * 180) / Math.PI;
+  const elevation = 90 - (controls.getPolarAngle() * 180) / Math.PI;
+  const distance = controls.getDistance();
+  return { azimuth, elevation, distance };
+}
+
+/**
+ * Restore orbit camera from getView3dCameraPose() payload (or equivalent JSON).
+ * Does not touch Option-drag model snap rotation.
+ */
+export function setView3dCameraPose(pose) {
+  if (!camera || !controls || !pose) return false;
+  const azimuth = Number(pose.azimuth ?? pose.az ?? pose.yaw);
+  const elevation = Number(pose.elevation ?? pose.el ?? pose.pitch);
+  const distance = Number(pose.distance ?? pose.d ?? pose.zoom);
+  if (![azimuth, elevation, distance].every(Number.isFinite) || distance <= 0) {
+    return false;
+  }
+
+  const polar = THREE.MathUtils.clamp(
+    ((90 - elevation) * Math.PI) / 180,
+    controls.minPolarAngle,
+    controls.maxPolarAngle,
+  );
+  const theta = (azimuth * Math.PI) / 180;
+  const radius = THREE.MathUtils.clamp(
+    distance,
+    controls.minDistance,
+    controls.maxDistance,
+  );
+
+  const offset = new THREE.Vector3().setFromSpherical(
+    new THREE.Spherical(radius, polar, theta),
+  );
+  // Match OrbitControls Y-up spherical space (camera.up default).
+  camera.position.copy(controls.target).add(offset);
+
+  const wasDamping = controls.enableDamping;
+  controls.enableDamping = false;
+  controls.update();
+  controls.enableDamping = wasDamping;
+
+  publishCameraPose(true);
+  return true;
+}
+
+/** Parse clipboard / paste text into a camera pose, or null. */
+export function parseView3dCameraPose(text) {
+  if (typeof text !== "string") return null;
+  const t = text.trim();
+  if (!t) return null;
+  try {
+    const o = JSON.parse(t);
+    if (!o || typeof o !== "object") return null;
+    const azimuth = Number(o.azimuth ?? o.az ?? o.yaw);
+    const elevation = Number(o.elevation ?? o.el ?? o.pitch);
+    const distance = Number(o.distance ?? o.d ?? o.zoom);
+    if (![azimuth, elevation, distance].every(Number.isFinite) || distance <= 0) {
+      return null;
+    }
+    return { azimuth, elevation, distance };
+  } catch {
+    // Compact: az:1,el:2,d:3 or 1,2,3
+    const m = t.match(
+      /(?:az(?:imuth)?|yaw)\s*[:=]\s*([-+eE0-9.]+).*?(?:el(?:evation)?|pitch)\s*[:=]\s*([-+eE0-9.]+).*?(?:d(?:istance)?|zoom)\s*[:=]\s*([-+eE0-9.]+)/i,
+    );
+    if (m) {
+      const azimuth = Number(m[1]);
+      const elevation = Number(m[2]);
+      const distance = Number(m[3]);
+      if (![azimuth, elevation, distance].every(Number.isFinite) || distance <= 0) {
+        return null;
+      }
+      return { azimuth, elevation, distance };
+    }
+    const parts = t.split(/[,;\s]+/).map(Number).filter(Number.isFinite);
+    if (parts.length >= 3 && parts[2] > 0) {
+      return { azimuth: parts[0], elevation: parts[1], distance: parts[2] };
+    }
+    return null;
+  }
+}
+
+export function serializeView3dCameraPose(pose = getView3dCameraPose()) {
+  if (!pose) return "";
+  return JSON.stringify({
+    azimuth: pose.azimuth,
+    elevation: pose.elevation,
+    distance: pose.distance,
+  });
+}
+
 export function resetView3dCamera() {
   if (!camera || !controls) return;
   camera.position.set(0, -4.2, 5.2);
   controls.target.set(0, 0, 0);
+  const wasDamping = controls.enableDamping;
+  controls.enableDamping = false;
   controls.update();
+  controls.enableDamping = wasDamping;
+  publishCameraPose(true);
 }
 
 /** Render once with transparent clear (no gray stage bg). Restores afterward. */

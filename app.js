@@ -25,6 +25,10 @@ import {
   exportView3dPng,
   exportView3dFbx,
   copyView3dTransparentPng,
+  getView3dCameraPose,
+  setView3dCameraPose,
+  parseView3dCameraPose,
+  serializeView3dCameraPose,
 } from "./view3d.js";
 import opentype from "./vendor/opentype/opentype.module.js";
 const STORAGE_KEY = "pin-ring-constructor-v2";
@@ -1555,6 +1559,8 @@ function setViewMode(mode) {
   // Hidden, not unmounted — scrubber values survive the mode switch.
   const compSection = document.getElementById("composition-section");
   if (compSection) compSection.hidden = isAnim || isStrips;
+  const volumeCamSection = document.getElementById("volume-camera-section");
+  if (volumeCamSection) volumeCamSection.hidden = !isVolume;
   stageEl?.classList.toggle("is-anim", isAnim);
   stageEl?.classList.toggle("is-volume", isVolume);
   stageEl?.classList.toggle("is-strips", isStrips);
@@ -3812,6 +3818,33 @@ function wireUi() {
       case "export-fbx":
         if (viewMode === "volume") exportView3dFbx("pin-radial.fbx");
         break;
+      case "camera-pose": {
+        if (viewMode !== "volume") break;
+        const az = e.detail?.azimuth;
+        const elv = e.detail?.elevation;
+        const dist = e.detail?.distance;
+        setView3dCameraPose({
+          azimuth: az,
+          elevation: elv,
+          distance: dist,
+        });
+        break;
+      }
+      case "camera-copy": {
+        if (viewMode !== "volume") break;
+        const text = serializeView3dCameraPose(getView3dCameraPose());
+        if (text) {
+          navigator.clipboard?.writeText(text).catch(() => {});
+        }
+        break;
+      }
+      case "camera-paste": {
+        if (viewMode !== "volume") break;
+        const raw = e.detail?.payload ?? e.detail?.text ?? "";
+        const parsed = parseView3dCameraPose(String(raw));
+        if (parsed) setView3dCameraPose(parsed);
+        break;
+      }
       case "export-video":
         exportVideo();
         break;

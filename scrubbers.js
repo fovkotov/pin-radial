@@ -20468,7 +20468,142 @@ function vv() {
 		children: "экспорт fbx"
 	}) }) : null;
 }
-function yv() {
+function yv(e) {
+	if (!Number.isFinite(e)) return "";
+	let t = Math.round(e * 1e6) / 1e6;
+	return String(t);
+}
+function bv(e) {
+	if (!e) return null;
+	let t = Number(e.azimuth), n = Number(e.elevation), r = Number(e.distance);
+	return ![
+		t,
+		n,
+		r
+	].every(Number.isFinite) || r <= 0 ? null : {
+		azimuth: t,
+		elevation: n,
+		distance: r
+	};
+}
+function xv(e) {
+	let t = e.trim();
+	if (!t) return !1;
+	if (t.startsWith("{") && /azimuth|"az"|elevation|"el"|distance|"d"/i.test(t) || /(?:az(?:imuth)?|yaw)\s*[:=]/i.test(t) && /(?:el(?:evation)?|pitch)\s*[:=]/i.test(t)) return !0;
+	let n = t.split(/[,;\s]+/).map(Number);
+	return n.length >= 3 && n.every(Number.isFinite) && n[2] > 0;
+}
+function Sv() {
+	let { viewMode: e } = nv(), [t, n] = (0, C.useState)(""), [r, i] = (0, C.useState)(""), [a, o] = (0, C.useState)(""), [s, c] = (0, C.useState)(""), [l, u] = (0, C.useState)(!1);
+	if ((0, C.useEffect)(() => {
+		let e = (e) => {
+			let t = bv(e.detail);
+			t && (n(yv(t.azimuth)), i(yv(t.elevation)), o(yv(t.distance)));
+		};
+		return window.addEventListener("radial-camera-sync", e), () => window.removeEventListener("radial-camera-sync", e);
+	}, []), e !== "volume") return null;
+	let d = () => {
+		$_("camera-pose", {
+			azimuth: t,
+			elevation: r,
+			distance: a
+		});
+	}, f = () => {
+		$_("camera-copy"), u(!0), window.setTimeout(() => u(!1), 600);
+	}, p = async (e) => {
+		let t = e ?? "";
+		if (!t) try {
+			t = await navigator.clipboard.readText();
+		} catch {
+			t = s;
+		}
+		t.trim() && (c(t.trim()), $_("camera-paste", { payload: t }));
+	};
+	return /* @__PURE__ */ (0, G.jsx)(tv, { children: /* @__PURE__ */ (0, G.jsxs)("div", {
+		className: "fluid-camera-panel",
+		onPaste: (e) => {
+			let t = e.clipboardData?.getData("text") ?? "";
+			xv(t) && (e.preventDefault(), p(t));
+		},
+		onBlur: (e) => {
+			let t = e.currentTarget, n = e.relatedTarget;
+			if (n && t.contains(n)) return;
+			let r = e.target?.id;
+			if (r === "cam-paste") {
+				xv(s) && p(s);
+				return;
+			}
+			(r === "cam-azimuth" || r === "cam-elevation" || r === "cam-distance") && d();
+		},
+		children: [/* @__PURE__ */ (0, G.jsxs)("div", {
+			className: "fluid-props-fields",
+			children: [/* @__PURE__ */ (0, G.jsxs)(fi, {
+				className: "fluid-input-group w-full max-w-none",
+				size: "default",
+				children: [/* @__PURE__ */ (0, G.jsxs)("div", {
+					className: "fluid-input-row",
+					children: [/* @__PURE__ */ (0, G.jsx)(pi, {
+						index: 0,
+						id: "cam-azimuth",
+						type: "number",
+						step: "any",
+						label: "азимут°",
+						value: t,
+						onChange: n
+					}), /* @__PURE__ */ (0, G.jsx)(pi, {
+						index: 1,
+						id: "cam-elevation",
+						type: "number",
+						step: "any",
+						label: "высота°",
+						value: r,
+						onChange: i
+					})]
+				}), /* @__PURE__ */ (0, G.jsx)("div", {
+					className: "fluid-input-row fluid-input-row--single",
+					children: /* @__PURE__ */ (0, G.jsx)(pi, {
+						index: 2,
+						id: "cam-distance",
+						type: "number",
+						step: "any",
+						label: "дистанция",
+						value: a,
+						onChange: o
+					})
+				})]
+			}), /* @__PURE__ */ (0, G.jsx)(fi, {
+				className: "fluid-input-group w-full max-w-none",
+				size: "default",
+				children: /* @__PURE__ */ (0, G.jsx)(pi, {
+					index: 3,
+					id: "cam-paste",
+					type: "text",
+					label: "вставка",
+					value: s,
+					onChange: c
+				})
+			})]
+		}), /* @__PURE__ */ (0, G.jsxs)("div", {
+			className: "fluid-btn-row",
+			children: [/* @__PURE__ */ (0, G.jsx)(Mn, {
+				id: "btn-camera-copy",
+				type: "button",
+				variant: "tertiary",
+				className: "fluid-btn-block",
+				onClick: f,
+				children: l ? "скопировано" : "копировать"
+			}), /* @__PURE__ */ (0, G.jsx)(Mn, {
+				id: "btn-camera-paste",
+				type: "button",
+				variant: "tertiary",
+				className: "fluid-btn-block",
+				onClick: () => void p(),
+				children: "вставить"
+			})]
+		})]
+	}) });
+}
+function Cv() {
 	let { viewMode: e } = nv();
 	return e === "flat" ? /* @__PURE__ */ (0, G.jsx)(tv, { children: /* @__PURE__ */ (0, G.jsx)(Mn, {
 		id: "btn-add-segment",
@@ -20480,7 +20615,7 @@ function yv() {
 		children: "добавить сегмент"
 	}) }) : null;
 }
-function bv({ id: e, action: t }) {
+function wv({ id: e, action: t }) {
 	return /* @__PURE__ */ (0, G.jsx)(tv, { children: /* @__PURE__ */ (0, G.jsx)(Mn, {
 		id: e,
 		type: "button",
@@ -20490,7 +20625,7 @@ function bv({ id: e, action: t }) {
 		children: "удалить"
 	}) });
 }
-function xv() {
+function Tv() {
 	let [e, t] = (0, C.useState)(""), [n, r] = (0, C.useState)(!1);
 	return (0, C.useEffect)(() => {
 		let e = () => r(!0);
@@ -20519,18 +20654,18 @@ function xv() {
 		children: "войти"
 	})] });
 }
-var Sv = {
+var Ev = {
 	"seg-rin": "segRin",
 	"seg-rout": "segRout",
 	"seg-a0": "segA0",
 	"seg-a1": "segA1"
 };
-function Cv() {
+function Dv() {
 	let [e, t] = rv();
 	return /* @__PURE__ */ (0, G.jsx)(tv, { children: /* @__PURE__ */ (0, G.jsx)("div", {
 		className: "fluid-props-fields",
 		onBlur: (e) => {
-			let t = e.target?.id, n = t ? Sv[t] : void 0;
+			let t = e.target?.id, n = t ? Ev[t] : void 0;
 			n && ev(n, e.target.value ?? "", "change");
 		},
 		children: /* @__PURE__ */ (0, G.jsxs)(fi, {
@@ -20578,67 +20713,67 @@ function Cv() {
 		})
 	}) });
 }
-var wv = /* @__PURE__ */ new Map();
-function Tv(e, t) {
+var Ov = /* @__PURE__ */ new Map();
+function kv(e, t) {
 	let n = document.getElementById(e);
 	if (!n) return;
-	let r = wv.get(e);
-	r || (r = (0, ze.createRoot)(n), wv.set(e, r)), r.render(t);
+	let r = Ov.get(e);
+	r || (r = (0, ze.createRoot)(n), Ov.set(e, r)), r.render(t);
 }
-function Ev() {
-	Tv("fluid-host-mode", /* @__PURE__ */ (0, G.jsx)(av, {})), Tv("fluid-host-random", /* @__PURE__ */ (0, G.jsx)(ov, {})), Tv("fluid-host-anim-stepped", /* @__PURE__ */ (0, G.jsx)(sv, {})), Tv("fluid-host-anim-spin", /* @__PURE__ */ (0, G.jsx)(pv, {})), Tv("fluid-host-anim-size", /* @__PURE__ */ (0, G.jsx)(dv, {})), Tv("fluid-host-anim-sound", /* @__PURE__ */ (0, G.jsx)(lv, {})), Tv("fluid-host-anim-particles", /* @__PURE__ */ (0, G.jsx)(fv, {})), Tv("fluid-host-anim-waves", /* @__PURE__ */ (0, G.jsx)(cv, {})), Tv("fluid-host-anim-speed", /* @__PURE__ */ (0, G.jsx)(mv, {})), Tv("fluid-host-strips-count", /* @__PURE__ */ (0, G.jsx)(hv, {
+function Av() {
+	kv("fluid-host-mode", /* @__PURE__ */ (0, G.jsx)(av, {})), kv("fluid-host-random", /* @__PURE__ */ (0, G.jsx)(ov, {})), kv("fluid-host-anim-stepped", /* @__PURE__ */ (0, G.jsx)(sv, {})), kv("fluid-host-anim-spin", /* @__PURE__ */ (0, G.jsx)(pv, {})), kv("fluid-host-anim-size", /* @__PURE__ */ (0, G.jsx)(dv, {})), kv("fluid-host-anim-sound", /* @__PURE__ */ (0, G.jsx)(lv, {})), kv("fluid-host-anim-particles", /* @__PURE__ */ (0, G.jsx)(fv, {})), kv("fluid-host-anim-waves", /* @__PURE__ */ (0, G.jsx)(cv, {})), kv("fluid-host-anim-speed", /* @__PURE__ */ (0, G.jsx)(mv, {})), kv("fluid-host-strips-count", /* @__PURE__ */ (0, G.jsx)(hv, {
 		label: "количество",
 		field: "stripsBlocks",
 		action: "strips-blocks",
 		min: 3,
 		max: 12
-	})), Tv("fluid-host-strips-width", /* @__PURE__ */ (0, G.jsx)(hv, {
+	})), kv("fluid-host-strips-width", /* @__PURE__ */ (0, G.jsx)(hv, {
 		label: "ширина",
 		field: "stripsWidth",
 		action: "strips-width",
 		min: 48,
 		max: 320
-	})), Tv("fluid-host-export-video", /* @__PURE__ */ (0, G.jsx)(gv, {})), Tv("fluid-host-export-fbx", /* @__PURE__ */ (0, G.jsx)(vv, {})), Tv("fluid-host-export-svg", /* @__PURE__ */ (0, G.jsx)(_v, {})), Tv("fluid-host-fabs", /* @__PURE__ */ (0, G.jsx)(yv, {})), Tv("fluid-host-delete-seg", /* @__PURE__ */ (0, G.jsx)(bv, {
+	})), kv("fluid-host-export-video", /* @__PURE__ */ (0, G.jsx)(gv, {})), kv("fluid-host-export-fbx", /* @__PURE__ */ (0, G.jsx)(vv, {})), kv("fluid-host-export-svg", /* @__PURE__ */ (0, G.jsx)(_v, {})), kv("fluid-host-fabs", /* @__PURE__ */ (0, G.jsx)(Cv, {})), kv("fluid-host-delete-seg", /* @__PURE__ */ (0, G.jsx)(wv, {
 		id: "btn-delete-seg",
 		action: "delete-seg"
-	})), Tv("fluid-host-gate", /* @__PURE__ */ (0, G.jsx)(xv, {})), Tv("fluid-host-seg-fields", /* @__PURE__ */ (0, G.jsx)(Cv, {})), window.dispatchEvent(new CustomEvent("radial-fluid-ready"));
+	})), kv("fluid-host-gate", /* @__PURE__ */ (0, G.jsx)(Tv, {})), kv("fluid-host-seg-fields", /* @__PURE__ */ (0, G.jsx)(Dv, {})), kv("fluid-host-camera", /* @__PURE__ */ (0, G.jsx)(Sv, {})), window.dispatchEvent(new CustomEvent("radial-fluid-ready"));
 }
 //#endregion
 //#region src/CompositionScrubbers.tsx
-var Dv = 69, Ov = 90, kv = 66, Av = 120, jv = 83, Mv = 100;
-function Nv(e) {
+var jv = 69, Mv = 90, Nv = 66, Pv = 120, Fv = 83, Iv = 100;
+function Lv(e) {
 	if (e === "small") return 0;
 	if (e === "large") return 100;
 	let t = Math.round(Number(e));
-	return Number.isFinite(t) ? Math.max(0, Math.min(100, t)) : Mv;
+	return Number.isFinite(t) ? Math.max(0, Math.min(100, t)) : Iv;
 }
-function Pv() {
+function Rv() {
 	let e = window.__radialPrefs;
 	return {
-		randomness: typeof e?.randomness == "number" ? e.randomness : Dv,
-		objectCount: typeof e?.objectCount == "number" ? e.objectCount : Ov,
-		widePieces: typeof e?.widePieces == "number" ? e.widePieces : kv,
-		longPieces: typeof e?.longPieces == "number" ? e.longPieces : jv,
-		sizeMix: Nv(e?.sizeMix ?? Mv)
+		randomness: typeof e?.randomness == "number" ? e.randomness : jv,
+		objectCount: typeof e?.objectCount == "number" ? e.objectCount : Mv,
+		widePieces: typeof e?.widePieces == "number" ? e.widePieces : Nv,
+		longPieces: typeof e?.longPieces == "number" ? e.longPieces : Fv,
+		sizeMix: Lv(e?.sizeMix ?? Iv)
 	};
 }
-function Fv(e, t, n) {
+function zv(e, t, n) {
 	window.dispatchEvent(new CustomEvent("radial-scrubber-change", { detail: {
 		key: e,
 		value: t,
 		phase: n
 	} }));
 }
-function Iv({ prefKey: e, label: t, value: n, onValue: r, max: i = 100 }) {
+function Bv({ prefKey: e, label: t, value: n, onValue: r, max: i = 100 }) {
 	let a = (0, C.useCallback)((t) => {
 		let n = typeof t == "number" ? t : t[0];
-		r(n), Fv(e, n, "input");
+		r(n), zv(e, n, "input");
 	}, [e, r]);
 	return /* @__PURE__ */ (0, G.jsx)("div", {
 		className: "composition-scrubber",
-		onPointerDownCapture: () => Fv(e, n, "start"),
-		onPointerUpCapture: () => Fv(e, n, "end"),
-		onPointerCancelCapture: () => Fv(e, n, "end"),
+		onPointerDownCapture: () => zv(e, n, "start"),
+		onPointerUpCapture: () => zv(e, n, "end"),
+		onPointerCancelCapture: () => zv(e, n, "end"),
 		children: /* @__PURE__ */ (0, G.jsx)(__, {
 			variant: "scrubber",
 			label: t,
@@ -20651,17 +20786,17 @@ function Iv({ prefKey: e, label: t, value: n, onValue: r, max: i = 100 }) {
 		})
 	});
 }
-function Lv() {
-	let [e, t] = (0, C.useState)(Pv);
+function Vv() {
+	let [e, t] = (0, C.useState)(Rv);
 	return (0, C.useEffect)(() => {
 		let e = (e) => {
 			let n = e.detail;
 			n && t({
 				randomness: n.randomness,
 				objectCount: n.objectCount,
-				widePieces: typeof n.widePieces == "number" ? n.widePieces : kv,
-				longPieces: typeof n.longPieces == "number" ? n.longPieces : jv,
-				sizeMix: Nv(n.sizeMix)
+				widePieces: typeof n.widePieces == "number" ? n.widePieces : Nv,
+				longPieces: typeof n.longPieces == "number" ? n.longPieces : Fv,
+				sizeMix: Lv(n.sizeMix)
 			});
 		};
 		return window.addEventListener("radial-prefs-sync", e), () => window.removeEventListener("radial-prefs-sync", e);
@@ -20674,7 +20809,7 @@ function Lv() {
 				children: /* @__PURE__ */ (0, G.jsxs)("div", {
 					className: "composition-scrubbers flex flex-col gap-1",
 					children: [
-						/* @__PURE__ */ (0, G.jsx)(Iv, {
+						/* @__PURE__ */ (0, G.jsx)(Bv, {
 							prefKey: "randomness",
 							label: "рандомность",
 							value: e.randomness,
@@ -20683,7 +20818,7 @@ function Lv() {
 								randomness: e
 							}))
 						}),
-						/* @__PURE__ */ (0, G.jsx)(Iv, {
+						/* @__PURE__ */ (0, G.jsx)(Bv, {
 							prefKey: "objectCount",
 							label: "количество",
 							value: e.objectCount,
@@ -20692,7 +20827,7 @@ function Lv() {
 								objectCount: e
 							}))
 						}),
-						/* @__PURE__ */ (0, G.jsx)(Iv, {
+						/* @__PURE__ */ (0, G.jsx)(Bv, {
 							prefKey: "sizeMix",
 							label: "размер",
 							value: e.sizeMix,
@@ -20705,17 +20840,17 @@ function Lv() {
 							className: "composition-subhead",
 							children: "геометрия сегментов"
 						}),
-						/* @__PURE__ */ (0, G.jsx)(Iv, {
+						/* @__PURE__ */ (0, G.jsx)(Bv, {
 							prefKey: "widePieces",
 							label: "широкие",
 							value: e.widePieces,
-							max: Av,
+							max: Pv,
 							onValue: (e) => t((t) => ({
 								...t,
 								widePieces: e
 							}))
 						}),
-						/* @__PURE__ */ (0, G.jsx)(Iv, {
+						/* @__PURE__ */ (0, G.jsx)(Bv, {
 							prefKey: "longPieces",
 							label: "длинные",
 							value: e.longPieces,
@@ -20732,9 +20867,9 @@ function Lv() {
 }
 //#endregion
 //#region src/scrubbers-main.tsx
-function Rv() {
+function Hv() {
 	let e = document.getElementById("composition-scrubbers");
-	e && (0, ze.createRoot)(e).render(/* @__PURE__ */ (0, G.jsx)(Lv, {})), Ev();
+	e && (0, ze.createRoot)(e).render(/* @__PURE__ */ (0, G.jsx)(Vv, {})), Av();
 }
-document.readyState === "loading" ? document.addEventListener("DOMContentLoaded", Rv) : Rv();
+document.readyState === "loading" ? document.addEventListener("DOMContentLoaded", Hv) : Hv();
 //#endregion
