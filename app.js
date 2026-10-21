@@ -861,6 +861,7 @@ function wireSizeSpreadSlider() {
     if (phase === "start") {
       if (!spreadHistoryPushed) {
         pushHistory();
+        pushCompositionTake();
         spreadHistoryPushed = true;
       }
       return;
@@ -1284,6 +1285,11 @@ let state = createPreset();
 let history = [];
 /** Redo stack (cleared on new edits via pushHistory). */
 let future = [];
+/** Previous full-composition takes from R / scrubber start (not persisted). */
+const TAKE_HISTORY_MAX = 40;
+let compositionTakeHistory = [];
+/** Previous лента strip seeds from R (not persisted). */
+let stripTakeHistory = [];
 let tool = "select";
 let selected = null;
 let interaction = null;
@@ -1328,6 +1334,35 @@ function pushHistory() {
   history.push(cloneState(state));
   if (history.length > 60) history.shift();
   future = [];
+  persist();
+}
+
+function pushCompositionTake() {
+  compositionTakeHistory.push(cloneState(state));
+  if (compositionTakeHistory.length > TAKE_HISTORY_MAX) {
+    compositionTakeHistory.shift();
+  }
+}
+
+function pushStripTake() {
+  stripTakeHistory.push(stripSeed);
+  if (stripTakeHistory.length > TAKE_HISTORY_MAX) stripTakeHistory.shift();
+}
+
+/** Shift+R: restore last saved take (composition or лента seed). No-op if empty. */
+function restorePreviousTake() {
+  if (viewMode === "strips") {
+    if (!stripTakeHistory.length) return;
+    stripSeed = stripTakeHistory.pop();
+    renderStrips();
+    return;
+  }
+  if (!compositionTakeHistory.length) return;
+  state = compositionTakeHistory.pop();
+  selected = null;
+  if (viewMode === "anim") rebuildMotion(true);
+  if (viewMode === "volume") ensureSegmentDepths();
+  render();
   persist();
 }
 
@@ -1807,6 +1842,7 @@ function renderStrips() {
 }
 
 function regenerateStrips() {
+  pushStripTake();
   stripSeed = (Math.random() * 2 ** 32) >>> 0;
   renderStrips();
 }
@@ -3296,7 +3332,10 @@ let spreadHistoryPushed = false;
 let videoExporting = false;
 
 function applyRandom(pushHist, { fromSlider = false } = {}) {
-  if (pushHist) pushHistory();
+  if (pushHist) {
+    pushHistory();
+    pushCompositionTake();
+  }
 
   state = createRandomComposition(
     widePieces01(),
@@ -4296,9 +4335,9 @@ window.addEventListener("keydown", (evt) => {
   if (!evt.metaKey && !evt.ctrlKey && !evt.altKey && !evt.repeat) {
     if (evt.code === "KeyR" || evt.key === "r" || evt.key === "R") {
       evt.preventDefault();
-      // Shift+R = undo (same as Cmd+Z); plain R = random
+      // Shift+R = previous take (~40 deep); plain R = random
       if (evt.shiftKey) {
-        undo();
+        restorePreviousTake();
         return;
       }
       flashShortcutKbd("btn-random");
